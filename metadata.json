@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Gestión de Convivencia Escolar",
+  "description": "Plataforma de gestión de convivencia escolar y resguardo inmediato bajo la Circular 482 y la Ley 21809 de la Superintendencia de Educación de Chile.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
