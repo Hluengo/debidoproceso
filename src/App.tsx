@@ -5,7 +5,7 @@
 
 import React, { useState, useReducer, useEffect, useRef } from 'react';
 import { Causa, EstadoCausa, UserRole, FaseProcedimental } from './types';
-import { INITIAL_CAUSAS, getFaseForEstado, getBaseChecklist } from './data';
+import { getFaseForEstado, getBaseChecklist } from './data';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import type { SidebarView } from './components/Sidebar';
@@ -18,7 +18,7 @@ import PageHeader from './components/PageHeader';
 import StudentsPanel from './components/StudentsPanel';
 import NewCausaModal from './components/NewCausaModal';
 import { Search, Plus, RotateCcw, Scale, Sparkles, BookOpen, ChevronLeft } from 'lucide-react';
-import { supabase, type Course, type Student, fetchCausas, createCausa, updateCausa, saveBitacora, saveChecklist } from './lib/supabase';
+import { supabase, type Course, type Student, fetchCourses, fetchCausas, createCausa, updateCausa, saveBitacora, saveChecklist } from './lib/supabase';
 
 function generateInitials(fullName: string): string {
   if (!fullName) return "N. N.";
@@ -150,14 +150,8 @@ export default function App() {
     
     async function loadCourses() {
       setIsLoadingCourses(true);
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .order('position', { ascending: true });
-      
-      if (!error && data) {
-        setCourses(data);
-      }
+      const data = await fetchCourses();
+      setCourses(data);
       setIsLoadingCourses(false);
     }
     loadCourses();
@@ -361,11 +355,20 @@ export default function App() {
     setIsTimelineCollapsed(false);
   };
 
-  // Reset to original mock database values
-  const handleRestoreDatabase = () => {
-    if (confirm("¿Está seguro de restaurar los datos del expediente a su estado original? Se perderán las causas que haya creado en esta sesión.")) {
-      setCausas(INITIAL_CAUSAS);
-      setSelectedCausaId(INITIAL_CAUSAS[0]?.id || '');
+  // Reload causas fresh from Supabase
+  const handleRestoreDatabase = async () => {
+    if (!confirm('¿Recargar los expedientes desde Supabase? Se descartarán los cambios no guardados.')) return;
+    isLoadingCausasRef.current = true;
+    setCausas([]);
+    setSelectedCausaId('');
+    try {
+      const loaded = await fetchCausas();
+      setCausas(loaded);
+      if (loaded.length > 0) setSelectedCausaId(loaded[0].id);
+    } catch (err) {
+      console.error('Error reloading causas:', err);
+    } finally {
+      isLoadingCausasRef.current = false;
     }
   };
 
@@ -625,8 +628,8 @@ export default function App() {
             </div>
           )}
 
-          {/* VIEW 3: CLOSED CASES */}
-          {currentView === 'causas' && selectedCausaId === '' && filteredCausas.length === 0 && (
+          {/* VIEW 3: CLOSED CASES — accessible from sidebar closedCount */}
+          {currentView === 'cerradas' && (
             <div className="flex-1">
               <ClosedCases
                 causas={causas}
